@@ -41,8 +41,8 @@ colnames(edges)[3] <- "weight"
 
 
 graph <- graph_from_data_frame(edges, directed=TRUE)
-simplify(graph, remove.multiple = TRUE, remove.loops = TRUE,
-         edge.attr.comb = igraph_opt("edge.attr.comb"))
+#simplify(graph, remove.multiple = TRUE, remove.loops = TRUE,
+#         edge.attr.comb = igraph_opt("edge.attr.comb"))
 
 precision_matrix <- as_adjacency_matrix(graph, 
                                         names = TRUE,
