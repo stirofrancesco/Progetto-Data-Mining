@@ -121,11 +121,6 @@ for(i in 1:numcol){
   }
 }
 
-for(i in 1:numcol-1)
-  for(j in 1:numcol){
-    is.na(coefGGM[i,j])==TRUE
-  }
-
 #Creazione del grafo di correlazione
 correlation_graph <- graph_from_adjacency_matrix(precision_matrix, 
                                                   mode = "directed",
