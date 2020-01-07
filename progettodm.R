@@ -2,6 +2,7 @@ library(igraph)
 library(matrix)
 library(DNetFinder)
 library(stringi)
+library(predictionet)
 
 #Creazione del grafo di correlazione
 
@@ -121,6 +122,10 @@ for(i in 1:numcol){
   }
 }
 
+for(i in 1:length(rownames(precision_matrix))){
+  print(precision_matrix[i,i])
+}
+
 #Creazione del grafo di correlazione
 correlation_graph <- graph_from_adjacency_matrix(precision_matrix, 
                                                   mode = "directed",
@@ -132,9 +137,50 @@ plot(correlation_graph)
 
 
 
-#Confronto con la METAPATHWAY (Non finito)
-
+#Confronto con la METAPATHWAY
 
 
 #Calcolo la matrice differenza tra la matrice di adiacenza della METAPATHWAY e tra la matrice di adiacenza del grafo di correlazione
 diffmatrix <- adj_metapathway - precision_matrix
+
+#Setto a 0 i self-loop
+for(i in 1:length(rownames(diffmatrix))){
+  diffmatrix[i,i] <- 0
+}
+
+
+#Tabella risultati
+{
+  table <- c()
+
+  for(i in 1:length(rownames(diffmatrix))){
+    for (j in 1:length(colnames(diffmatrix))){
+      if(diffmatrix[i,j]!=0) table <- c(table,rownames(diffmatrix)[i],colnames(diffmatrix)[j],diffmatrix[i,j])
+    }
+  }
+  
+  
+  discover <- matrix(table, ncol=3, byrow=TRUE)
+  colnames(discover) <- c("Gene1","Gene2","Scoperta")
+}
+
+
+#Grafo differenza
+diff_graph <- graph_from_adjacency_matrix(diffmatrix, 
+                                          mode = "directed",
+                                          weighted = TRUE
+                                          )
+
+#Plot grafo differenza (fruchterman reingold)
+plot(diff_graph, layout = layout.fruchterman.reingold, vertex.size=7, vertex.color = rainbow(10, .8, .8, alpha= .8),
+     vertex.label.color = "black", vertex.label.cex = 0.4, vertex.label.degree = -pi/2,
+     edge.arrow.size = 0.3, edge.arrow.width = 0.4, edge.color = "black")
+
+#Plot grafo differenza
+plot(diff_graph, edge.label=round(E(diff_graph)$weight, 3))
+
+
+
+
+
+# edge.label=round(E(diff_graph)$weight), edge.label.color = "green"
