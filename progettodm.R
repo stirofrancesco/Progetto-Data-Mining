@@ -2,7 +2,6 @@ library(igraph)
 library(matrix)
 library(DNetFinder)
 library(stringi)
-library(predictionet)
 
 #Creazione del grafo di correlazione
 
@@ -122,10 +121,6 @@ for(i in 1:numcol){
   }
 }
 
-for(i in 1:length(rownames(precision_matrix))){
-  print(precision_matrix[i,i])
-}
-
 #Creazione del grafo di correlazione
 correlation_graph <- graph_from_adjacency_matrix(precision_matrix, 
                                                   mode = "directed",
@@ -148,22 +143,58 @@ for(i in 1:length(rownames(diffmatrix))){
   diffmatrix[i,i] <- 0
 }
 
-
-#Tabella risultati
+#Creazione delle reti per la divisione dei pesi
 {
-  table <- c()
-
-  for(i in 1:length(rownames(diffmatrix))){
-    for (j in 1:length(colnames(diffmatrix))){
-      if(diffmatrix[i,j]!=0) table <- c(table,rownames(diffmatrix)[i],colnames(diffmatrix)[j],diffmatrix[i,j])
-    }
-  }
-  
-  
-  discover <- matrix(table, ncol=3, byrow=TRUE)
-  colnames(discover) <- c("Gene1","Gene2","Scoperta")
+  network1 <- matrix(0, nrow = length(which(diffmatrix==1)), ncol = 2 )
+  network2 <- matrix(0,nrow = length(which(diffmatrix==2)), ncol = 2 )
+  network_neg1 <- matrix(0,nrow = length(which(diffmatrix==-1)), ncol = 2 )
+  network_neg2 <- matrix(0,nrow = length(which(diffmatrix==-2)), ncol = 2 )
+  colnames(network1) <- c("Start","End")
+  colnames(network2) <- c("Start","End")
+  colnames(network_neg1) <- c("Start","End")
+  colnames(network_neg2) <- c("Start","End")
 }
 
+index <- c(1,1,1,1)
+for(i in 1:length(rownames(diffmatrix))){
+  for (j in 1:length(colnames(diffmatrix))){
+    if(diffmatrix[i,j]==1){
+      network1[index[1],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+      index[1] <- index[1]+1
+    }
+    else if(diffmatrix[i,j]==2){
+      network2[index[2],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+      index[2] <- index[2]+1
+    }
+    else if(diffmatrix[i,j]==-1){
+      network_neg1[index[3],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+      index[3] <- index[3]+1
+    }
+    else if(diffmatrix[i,j]==-2){
+      network1[index[4],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+      index[4] <- index[4]+1
+    }
+  }  
+}
+
+#Grafo rete pesi 1
+graph_net1 <- graph_from_edgelist(network1, directed = TRUE)
+#Grafo rete pesi 2
+graph_net2 <- graph_from_edgelist(network2, directed = TRUE)
+#Grafo rete pesi -1
+graph_net_neg1 <- graph_from_edgelist(network_neg1, directed = TRUE)
+#Grafo rete pesi -2
+graph_net_neg2 <- graph_from_edgelist(network_neg2, directed = TRUE)
+
+
+#Plot Grafo pesi 1
+plot(graph_net1)
+#Plot Grafo pesi 2
+plot(graph_net2)
+#Plot Grafo pesi -1
+plot(graph_net_neg1)
+#Plot Grafo pesi -2
+plot(graph_net_neg2)
 
 #Grafo differenza
 diff_graph <- graph_from_adjacency_matrix(diffmatrix, 
