@@ -143,6 +143,17 @@ for(i in 1:length(rownames(diffmatrix))){
   diffmatrix[i,i] <- 0
 }
 
+# #Grafo differenza
+# diff_graph <- graph_from_adjacency_matrix(diffmatrix, 
+#                                           mode = "directed",
+#                                           weighted = TRUE
+# )
+# 
+# #Plot grafo differenza (fruchterman reingold)
+# plot(diff_graph, layout = layout_with_kk, vertex.size=7, vertex.color = rainbow(10, .8, .8, alpha= .8),
+#      vertex.label.color = "black", vertex.label.cex = 0.4, vertex.label.degree = -pi/2,
+#      edge.arrow.size = 0.3, edge.arrow.width = 0.4, edge.color = "black")
+
 #Creazione delle reti per la divisione dei pesi
 {
   network1 <- matrix(0, nrow = length(which(diffmatrix==1)), ncol = 2 )
@@ -155,26 +166,29 @@ for(i in 1:length(rownames(diffmatrix))){
   colnames(network_neg2) <- c("Start","End")
 }
 
-index <- c(1,1,1,1)
-for(i in 1:length(rownames(diffmatrix))){
-  for (j in 1:length(colnames(diffmatrix))){
-    if(diffmatrix[i,j]==1){
-      network1[index[1],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
-      index[1] <- index[1]+1
-    }
-    else if(diffmatrix[i,j]==2){
-      network2[index[2],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
-      index[2] <- index[2]+1
-    }
-    else if(diffmatrix[i,j]==-1){
-      network_neg1[index[3],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
-      index[3] <- index[3]+1
-    }
-    else if(diffmatrix[i,j]==-2){
-      network1[index[4],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
-      index[4] <- index[4]+1
-    }
-  }  
+#Riempimento di ciascuna matrice per ogni relativo peso
+{
+  index <- c(1,1,1,1)
+  for(i in 1:length(rownames(diffmatrix))){
+    for (j in 1:length(colnames(diffmatrix))){
+      if(diffmatrix[i,j]==1){
+        network1[index[1],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+        index[1] <- index[1]+1
+      }
+      else if(diffmatrix[i,j]==2){
+        network2[index[2],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+        index[2] <- index[2]+1
+      }
+      else if(diffmatrix[i,j]==-1){
+        network_neg1[index[3],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+        index[3] <- index[3]+1
+      }
+      else if(diffmatrix[i,j]==-2){
+        network1[index[4],] <- c(rownames(diffmatrix)[i],colnames(diffmatrix)[j])
+        index[4] <- index[4]+1
+      }
+    }  
+  }
 }
 
 #Grafo rete pesi 1
@@ -188,30 +202,10 @@ graph_net_neg2 <- graph_from_edgelist(network_neg2, directed = TRUE)
 
 
 #Plot Grafo pesi 1
-plot(graph_net1)
+tkplot (graph_net1)
 #Plot Grafo pesi 2
-plot(graph_net2)
+tkplot(graph_net2)
 #Plot Grafo pesi -1
-plot(graph_net_neg1)
+tkplot(graph_net_neg1)
 #Plot Grafo pesi -2
-plot(graph_net_neg2)
-
-#Grafo differenza
-diff_graph <- graph_from_adjacency_matrix(diffmatrix, 
-                                          mode = "directed",
-                                          weighted = TRUE
-                                          )
-
-#Plot grafo differenza (fruchterman reingold)
-plot(diff_graph, layout = layout.fruchterman.reingold, vertex.size=7, vertex.color = rainbow(10, .8, .8, alpha= .8),
-     vertex.label.color = "black", vertex.label.cex = 0.4, vertex.label.degree = -pi/2,
-     edge.arrow.size = 0.3, edge.arrow.width = 0.4, edge.color = "black")
-
-#Plot grafo differenza
-plot(diff_graph, edge.label=round(E(diff_graph)$weight, 3))
-
-
-
-
-
-# edge.label=round(E(diff_graph)$weight), edge.label.color = "green"
+tkplot(graph_net_neg2)
