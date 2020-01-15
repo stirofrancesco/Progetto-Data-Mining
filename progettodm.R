@@ -191,7 +191,6 @@ for(i in 1:length(rownames(diffmatrix))){
   }
 }
 
-#Grafo rete pesi 1
 graph_net1 <- graph_from_edgelist(network1, directed = TRUE)
 #Grafo rete pesi 2
 graph_net2 <- graph_from_edgelist(network2, directed = TRUE)
@@ -201,8 +200,18 @@ graph_net_neg1 <- graph_from_edgelist(network_neg1, directed = TRUE)
 graph_net_neg2 <- graph_from_edgelist(network_neg2, directed = TRUE)
 
 
-#Plot Grafo pesi 1
-tkplot (graph_net1)
+#Funzione per la normalizzazione
+rescale = function(x,a,b,c,d){c + (x-a)/(b-a)*(d-c)}
+
+#Visualizzazione Grafo 1
+{
+  deg <- degree(graph_net1, mode = "all")
+  V(graph_net1)$size <- rescale(deg,min(deg),max(deg),2,25)
+  E(graph_net1)$arrow.size <- .2
+
+  tkplot(graph_net1, vertex.label = ifelse(degree(graph_net1) >= 13, V(graph_net1)$name, NA) )
+}
+
 #Plot Grafo pesi 2
 tkplot(graph_net2)
 #Plot Grafo pesi -1
