@@ -1,5 +1,4 @@
 library(igraph)
-library(matrix)
 library(DNetFinder)
 library(stringi)
 
@@ -36,29 +35,36 @@ edges$Subtype = as.numeric(as.character(edges$Subtype))
 colnames(edges)[3] <- "weight"
 }
 
-#Considero solo i geni presenti sia nella METAPATHWAY sia nel dataset di espressione.
+#Considero solo i geni presenti in tutti i dataset.
 {
   
   v1 <- rownames(expression)
-  v2<- unique(c(edges$X.Start,edges$End))
+  v2 <- unique(c(edges$X.Start,edges$End))
+  v3 <- nodes$X.Id
   
   common <- c()
   for(i in 1:length(v1)){
-    if(v1[i] %in% v2) common <- c(common,v1[i])
+    if(v1[i] %in% v2 && v1[i] %in% v3) common <- c(common,v1[i])
   }
   
   expression <- expression[common,]
   edges <- edges[(edges$X.Start %in% common) & (edges$End %in% common),]
+  nodes <- nodes[nodes$X.Id %in% common,]
   
   v1 <- rownames(expression)
   v2<- unique(c(edges$X.Start,edges$End))
+  v3 <- nodes$X.Id
   
   common <- c()
   for(i in 1:length(v1)){
-    if(v1[i] %in% v2) common <- c(common,v1[i])
+    if(v1[i] %in% v2 && v1[i] %in% v3) common <- c(common,v1[i])
   }
   
   expression <- expression[common,]
+  nodes <- nodes[nodes$X.Id %in% common,]
+  
+  v1 <- rownames(expression)
+  v3 <- nodes$X.Id
 }
 
 #Creazione grafo METAPATHWAY
@@ -101,7 +107,7 @@ coefGGM[is.na(coefGGM)] <- 0
 #Creo la matrice di adiacenza, inizialmente con tutti 0.
 precision_matrix <- matrix(0,nrow = numcol, ncol = numcol)
 
-#Introduco nuovamente i nomi dei geni
+#Introduco nuovamente gli ID dei geni
 {
 rownames(precision_matrix) <- colnames(expression_matrix)
 colnames(precision_matrix) <- colnames(expression_matrix)
@@ -143,17 +149,6 @@ for(i in 1:length(rownames(diffmatrix))){
   diffmatrix[i,i] <- 0
 }
 
-# #Grafo differenza
-# diff_graph <- graph_from_adjacency_matrix(diffmatrix, 
-#                                           mode = "directed",
-#                                           weighted = TRUE
-# )
-# 
-# #Plot grafo differenza (fruchterman reingold)
-# plot(diff_graph, layout = layout_with_kk, vertex.size=7, vertex.color = rainbow(10, .8, .8, alpha= .8),
-#      vertex.label.color = "black", vertex.label.cex = 0.4, vertex.label.degree = -pi/2,
-#      edge.arrow.size = 0.3, edge.arrow.width = 0.4, edge.color = "black")
-
 #Creazione delle reti per la divisione dei pesi
 {
   network1 <- matrix(0, nrow = length(which(diffmatrix==1)), ncol = 2 )
@@ -191,13 +186,31 @@ for(i in 1:length(rownames(diffmatrix))){
   }
 }
 
-graph_net1 <- graph_from_edgelist(network1, directed = TRUE)
+
+#Conversione delle matrici a DataFrame
+{
+  network1 <- as.data.frame(network1)
+  network2 <- as.data.frame(network2)
+  network_neg1 <- as.data.frame(network_neg1)
+  network_neg2 <- as.data.frame(network_neg2)
+}
+
+#Grafo rete pesi 1
+graph_net1 <- graph_from_data_frame(network1, 
+                                    directed = TRUE, 
+                                    vertices = nodes[nodes$X.Id %in% unique(c(as.vector.factor(network1$Start),as.vector.factor(network1$End))),])
 #Grafo rete pesi 2
-graph_net2 <- graph_from_edgelist(network2, directed = TRUE)
+graph_net2 <- graph_from_data_frame(network2, 
+                                    directed = TRUE, 
+                                    vertices = nodes[nodes$X.Id %in% unique(c(as.vector.factor(network2$Start),as.vector.factor(network2$End))),])
 #Grafo rete pesi -1
-graph_net_neg1 <- graph_from_edgelist(network_neg1, directed = TRUE)
+graph_neg_net1 <- graph_from_data_frame(network_neg1, 
+                                    directed = TRUE, 
+                                    vertices = nodes[nodes$X.Id %in% unique(c(as.vector.factor(network_neg1$Start),as.vector.factor(network_neg1$End))),])
 #Grafo rete pesi -2
-graph_net_neg2 <- graph_from_edgelist(network_neg2, directed = TRUE)
+graph_neg_net2 <- graph_from_data_frame(network_neg2, 
+                                    directed = TRUE, 
+                                    vertices = nodes[nodes$X.Id %in% unique(c(as.vector.factor(network_neg2$Start),as.vector.factor(network_neg2$End))),])
 
 
 #Funzione per la normalizzazione
@@ -206,15 +219,38 @@ rescale = function(x,a,b,c,d){c + (x-a)/(b-a)*(d-c)}
 #Visualizzazione Grafo 1
 {
   deg <- degree(graph_net1, mode = "all")
-  V(graph_net1)$size <- rescale(deg,min(deg),max(deg),2,25)
+  V(graph_net1)$size <- rescale(deg,min(deg),max(deg),2,35)
   E(graph_net1)$arrow.size <- .2
 
-  tkplot(graph_net1, vertex.label = ifelse(degree(graph_net1) >= 13, V(graph_net1)$name, NA) )
+  tkplot(graph_net1, vertex.label = ifelse(degree(graph_net1) >= 13, sapply(strsplit(c(V(graph_net1)$Name),","), `[`, 1), NA) )
 }
 
-#Plot Grafo pesi 2
-tkplot(graph_net2)
-#Plot Grafo pesi -1
-tkplot(graph_net_neg1)
-#Plot Grafo pesi -2
-tkplot(graph_net_neg2)
+#Visualizzazione Grafo 2
+{
+  deg <- degree(graph_net2, mode = "all")
+  V(graph_net2)$size <- rescale(deg,min(deg),max(deg),2,35)
+  E(graph_net2)$arrow.size <- .2
+  
+  tkplot(graph_net2, vertex.label = ifelse(degree(graph_net2) >= 13, sapply(strsplit(c(V(graph_net2)$Name),","), `[`, 1), NA) )
+}
+
+plot(graph_net2)
+
+#Visualizzazione Grafo -1
+{
+  deg <- degree(graph_neg_net1, mode = "all")
+  V(graph_neg_net1)$size <- rescale(deg,min(deg),max(deg),2,35)
+  E(graph_neg_net1)$arrow.size <- .2
+  
+  tkplot(graph_neg_net1, vertex.label = ifelse(degree(graph_neg_net1) >= 13, sapply(strsplit(c(V(graph_neg_net1)$Name),","), `[`, 1), NA) )
+}
+
+#Visualizzazione Grafo -2
+{
+  deg <- degree(graph_neg_net2, mode = "all")
+  V(graph_neg_net2)$size <- rescale(deg,min(deg),max(deg),2,35)
+  E(graph_neg_net2)$arrow.size <- .2
+  
+  tkplot(graph_neg_net2, vertex.label = ifelse(degree(graph_neg_net2) >= 13, sapply(strsplit(c(V(graph_neg_net2)$Name),","), `[`, 1), NA) )
+}
+
