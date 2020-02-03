@@ -1,12 +1,14 @@
 library(igraph)
 library(DNetFinder)
 library(stringi)
+library(data.table)
+
 
 #Creazione del grafo di correlazione
 
 
 #Lettura dataset di espressione
-expression <- read.delim("expression_data.txt",
+expressiondf <- read.delim("expression_data.txt",
                           header = TRUE,
                           sep = "\t",
                           colClasses = "character")
@@ -25,33 +27,41 @@ edges<- read.delim("edges.txt",
                    colClasses = "character")
 
 
+#Traspongo il dataset di espressione affinchè i pazienti siano le osservazioni.
+{
+  expression <- transpose(expressiondf)
+  rownames(expression) <- colnames(expressiondf)
+  colnames(expression) <- rownames(expressiondf)
+  rm(expressiondf)
+}
+
 #Tengo solamente Attivazione e Inibizione e assegno i pesi negli archi della METAPATHWAY.
 {
-edges$Type <- NULL
-edges <- edges[!(edges$Subtype!="ACTIVATION" & edges$Subtype!="INHIBITION"),]
-edges$Subtype[edges$Subtype=="ACTIVATION"] <- "1"
-edges$Subtype[edges$Subtype=="INHIBITION"] <- "-1" 
-edges$Subtype = as.numeric(as.character(edges$Subtype))
-colnames(edges)[3] <- "weight"
+  edges$Type <- NULL
+  edges <- edges[!(edges$Subtype!="ACTIVATION" & edges$Subtype!="INHIBITION"),]
+  edges$Subtype[edges$Subtype=="ACTIVATION"] <- "1"
+  edges$Subtype[edges$Subtype=="INHIBITION"] <- "-1" 
+  edges$Subtype = as.numeric(as.character(edges$Subtype))
+  colnames(edges)[3] <- "weight"
 }
 
 #Considero solo i geni presenti in tutti i dataset.
 {
   
-  v1 <- rownames(expression)
+  v1 <- colnames(expression)
   v2 <- unique(c(edges$X.Start,edges$End))
   v3 <- nodes$X.Id
   
   common <- c()
   for(i in 1:length(v1)){
-    if(v1[i] %in% v2 && v1[i] %in% v3) common <- c(common,v1[i])
+    if(v1[i] %in% v3) common <- c(common,v1[i])
   }
   
-  expression <- expression[common,]
+  expression <- expression[,common]
   edges <- edges[(edges$X.Start %in% common) & (edges$End %in% common),]
   nodes <- nodes[nodes$X.Id %in% common,]
   
-  v1 <- rownames(expression)
+  v1 <- colnames(expression)
   v2<- unique(c(edges$X.Start,edges$End))
   v3 <- nodes$X.Id
   
@@ -60,16 +70,16 @@ colnames(edges)[3] <- "weight"
     if(v1[i] %in% v2 && v1[i] %in% v3) common <- c(common,v1[i])
   }
   
-  expression <- expression[common,]
+  expression <- expression[,common]
   nodes <- nodes[nodes$X.Id %in% common,]
   
-  v1 <- rownames(expression)
-  v3 <- nodes$X.Id
+  rm(v1,v2,v3,i,common)
 }
 
 #Creazione grafo METAPATHWAY
 metapathway <- graph_from_data_frame(edges,
                                      directed=TRUE)
+
 
 #Creazione matrice di adiacenza METAPATHWAY
 adj_metapathway <- as.matrix(as_adjacency_matrix(metapathway))
@@ -79,27 +89,42 @@ adj_metapathway <- as.matrix(as_adjacency_matrix(metapathway))
 
 #Sampling delle matrici
 {
-  numrow <- 300
-  numcol <- 300
+  numrow <- 1000
+  numcol <- 1000
 }
+
+#Ordino i geni sulla base della metapathway
+expression <- expression[,rownames(adj_metapathway)]
+
+#Mischio le righe per il sampling
+expression <- expression[sample(nrow(expression)),]
+
+#Sampling di expression
+expression <- expression[1:numrow,1:numcol]
+
+#Rimuovo le colonne con devs nulla.
+{
+  genes <- c()
+  for(i in 1:numcol){
+    if(sd(expression[,i])!=0)
+      genes <- c(genes,colnames(expression)[i])
+  }
+
+  expression <- expression[,genes]
+  adj_metapathway <- adj_metapathway[genes,genes]
+}
+
+#Aggiorno il numero di colonne
+numcol <- length(colnames(expression))
+
+#Sampling della metapathway
+adj_metapathway <- adj_metapathway[1:numcol,1:numcol]
 
 #Carico la matrice di espressione dal dataset
 expression_matrix <- data.matrix(expression)
 
-# Calcolo della trasposta della matrice di espressione
-expression_matrix <- t(expression_matrix)
-
-#Ordino i geni sulla base della metapathway
-expression_matrix <- expression_matrix[,rownames(adj_metapathway)]
-
-#Riduco numero di righe e colonne
-{
-  expression_matrix <- expression_matrix[1:numrow,1:numcol]
-  adj_metapathway <- adj_metapathway[1:numrow,1:numcol]
-}
-
 #Calcolo i coefficenti di regressione (scegliere tra lassoGGM() e lassoNPN() )
-coefGGM <- lassoNPN(expression_matrix)
+coefGGM <- lassoGGM(expression_matrix)
 
 #Setto a 0 le colonne in cui lasso non ha restituito un valore.
 coefGGM[is.na(coefGGM)] <- 0
@@ -228,10 +253,10 @@ rescale = function(x,a,b,c,d){c + (x-a)/(b-a)*(d-c)}
 #Visualizzazione Grafo 2
 {
   deg <- degree(graph_net2, mode = "all")
-  V(graph_net2)$size <- rescale(deg,min(deg),max(deg),2,35)
+# V(graph_net2)$size <- rescale(deg,min(deg),max(deg),10,35)
   E(graph_net2)$arrow.size <- .2
   
-  tkplot(graph_net2, vertex.label = ifelse(degree(graph_net2) >= 13, sapply(strsplit(c(V(graph_net2)$Name),","), `[`, 1), NA) )
+  tkplot(graph_net2, vertex.label = ifelse(degree(graph_net2) >= 1, sapply(strsplit(c(V(graph_net2)$Name),","), `[`, 1), NA) )
 }
 
 plot(graph_net2)
@@ -248,9 +273,9 @@ plot(graph_net2)
 #Visualizzazione Grafo -2
 {
   deg <- degree(graph_neg_net2, mode = "all")
-  V(graph_neg_net2)$size <- rescale(deg,min(deg),max(deg),2,35)
+#  V(graph_neg_net2)$size <- rescale(deg,min(deg),max(deg),2,35)
   E(graph_neg_net2)$arrow.size <- .2
   
-  tkplot(graph_neg_net2, vertex.label = ifelse(degree(graph_neg_net2) >= 13, sapply(strsplit(c(V(graph_neg_net2)$Name),","), `[`, 1), NA) )
+  tkplot(graph_neg_net2, vertex.label = ifelse(degree(graph_neg_net2) >= 1, sapply(strsplit(c(V(graph_neg_net2)$Name),","), `[`, 1), NA) )
 }
 
