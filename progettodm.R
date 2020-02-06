@@ -89,8 +89,8 @@ adj_metapathway <- as.matrix(as_adjacency_matrix(metapathway))
 
 #Sampling delle matrici
 {
-  numrow <- 1000
-  numcol <- 1000
+  numrow <- 300
+  numcol <- 300
 }
 
 #Ordino i geni sulla base della metapathway
@@ -279,3 +279,6 @@ plot(graph_net2)
   tkplot(graph_neg_net2, vertex.label = ifelse(degree(graph_neg_net2) >= 1, sapply(strsplit(c(V(graph_neg_net2)$Name),","), `[`, 1), NA) )
 }
 
+
+#write.table(expression, file = "filename.txt", append = FALSE, sep = "\t", dec = ".",
+#           row.names = TRUE, col.names = TRUE)
